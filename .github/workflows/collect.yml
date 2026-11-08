@@ -1,0 +1,62 @@
+# KRAFT Markets: the "backend".
+# Every 15 minutes GitHub starts a fresh Linux machine, runs the collector,
+# commits the new data files, and republishes the site to GitHub Pages.
+
+name: collect
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # UTC. GitHub may start scheduled runs a few minutes late.
+  workflow_dispatch:          # adds a "Run workflow" button in the Actions tab
+  push:
+    branches: [main]          # redeploy whenever you edit the site
+
+permissions:
+  contents: write   # commit data files
+  pages: write      # publish to GitHub Pages
+  id-token: write   # required by deploy-pages
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect market data
+        run: python3 collector/collect.py
+
+      - name: Collect news
+        run: python3 collector/news.py
+        continue-on-error: true            # a news problem never blocks market data
+        env:
+          SURF_API_KEY: ${{ secrets.SURF_API_KEY }}   # optional; empty = keyless free tier
+
+      - name: Commit data
+        run: |
+          git config user.name  "kraft-collector"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No data changes"
+          else
+            git commit -m "data: $(date -u +'%Y-%m-%d %H:%M') UTC" --quiet
+            git pull --rebase --quiet origin main
+            git push --quiet origin HEAD:main
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
