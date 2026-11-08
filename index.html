@@ -4,205 +4,295 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KRAFT Markets</title>
-  <meta name="description" content="Digital-asset market indicators: spot, derivatives, liquidity, macro and network data, updated every 15 minutes.">
+  <meta name="description" content="A live digital-asset market terminal: spot, derivatives, liquidity, macro and network data with a curated institutional newswire.">
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M9 7v18M9 16l12-9M13 13l9 12' stroke='%2339FF14' stroke-width='2.4' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/kraft.css">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
-  <header class="site-header">
-    <div class="wrap bar">
-      <a class="wordmark" href="https://elian.ink" aria-label="KRAFT home">KRAFT<span aria-hidden="true">.</span></a>
-      <span class="mono crumb">/ Markets</span>
-      <nav class="nav" aria-label="Sections">
-        <ul>
-          <li><a href="#spot">Spot</a></li>
-          <li><a href="#wire">Wire</a></li>
-          <li><a href="#derivatives">Derivatives</a></li>
-          <li><a href="#liquidity">Liquidity</a></li>
-          <li><a href="#macro">Macro</a></li>
-          <li><a href="#network">Network</a></li>
-          <li><a href="#sources">Sources</a></li>
-        </ul>
+  <!-- ═════════════ TOP BAR ═════════════ -->
+  <header class="top" id="top">
+    <div class="bar">
+      <button class="tbtn" type="button" id="open-guide" aria-controls="guide" aria-expanded="false" title="Guide (G)">
+        <span class="ico" aria-hidden="true">☰</span><span class="lbl">Guide</span><kbd>G</kbd>
+      </button>
+      <a class="wordmark" href="https://elian.ink" aria-label="KRAFT, back to elian.ink">KRAFT<span aria-hidden="true">.</span></a>
+      <span class="crumb">Markets</span>
+      <nav class="jump" aria-label="Sections">
+        <a href="#s-state"><b>00</b>State</a>
+        <a href="#s-spot"><b>01</b>Spot</a>
+        <a href="#s-derivs"><b>02</b>Derivs</a>
+        <a href="#s-liq"><b>03</b>Liquidity</a>
+        <a href="#s-macro"><b>04</b>Macro</a>
+        <a href="#s-net"><b>05</b>Network</a>
       </nav>
-    </div>
-    <div class="status">
-      <div class="wrap status-row mono" aria-live="polite">
-        <span id="st-live"><i class="dot" aria-hidden="true"></i><span>Live prices connecting</span></span>
-        <span id="st-snap">Loading snapshot</span>
-        <span id="st-src"></span>
+      <div class="status" aria-live="polite">
+        <span class="clock" id="clock">--:--:-- UTC</span>
+        <span class="st" id="st-live"><i class="dot"></i><span>Connecting</span></span>
+        <span class="st hide-sm" id="st-snap">—</span>
+        <span class="st hide-sm" id="st-src"></span>
       </div>
+      <button class="tbtn wire-btn" type="button" id="open-wire" aria-controls="wire" aria-expanded="false" title="Wire (W)">
+        <span class="lbl">Wire</span><span class="badge" id="wire-badge" hidden>0</span><kbd>W</kbd>
+      </button>
+    </div>
+    <div class="tape" aria-label="Ticker">
+      <div class="tape-track" id="tape"></div>
     </div>
   </header>
 
-  <main id="main">
+  <!-- ═════════════ GUIDE (left drawer) ═════════════ -->
+  <aside class="drawer left" id="guide" aria-label="Guide" tabindex="-1">
+    <div class="dr-h">
+      <span class="mono">Guide</span>
+      <span class="dr-actions">
+        <button type="button" class="pin" data-pin="guide" title="Pin open">Pin</button>
+        <button type="button" class="x" data-close="guide" aria-label="Close guide">✕</button>
+      </span>
+    </div>
+    <div class="dr-body" id="guide-body">
+      <nav class="toc mono" aria-label="Guide contents">
+        <a href="#g-read">Reading the screen</a>
+        <a href="#g-signals">Signals</a>
+        <a href="#g-metrics">Metrics</a>
+        <a href="#g-pipeline">Sources &amp; pipeline</a>
+      </nav>
 
-    <!-- 01 SPOT -->
-    <section class="section" id="spot" aria-labelledby="spot-h">
-      <div class="wrap">
-        <header class="section-head">
-          <p class="mono">01 — Spot</p>
-          <h2 id="spot-h">Prices</h2>
-          <p class="note">Prices stream live from Coinbase. Changes, market caps and 7-day lines come from the latest CoinGecko snapshot.</p>
-        </header>
-        <div class="grid g4" id="assets"></div>
-        <div class="grid g4 stats" id="spot-stats"></div>
-      </div>
-    </section>
+      <section id="g-read">
+        <h3>Reading the screen</h3>
+        <p><b>Live vs snapshot.</b> Prices in the ticker and the Spot panel stream from Coinbase several times a second. Everything else comes from a snapshot the collector takes every 15 minutes; its age is in the top bar.</p>
+        <p><b>Range bars</b> <span class="demo-range"><i></i></span> show where today's value sits within a recent range (left = low, right = high). They turn a bare number into context: "is this high or low <i>for recently</i>?"</p>
+        <p><b>Colour.</b> Green is the accent: rising values, positive funding, and signals that are away from normal. Down moves use light grey plus a ▼ arrow, so colour is never the only cue.</p>
+        <p><b>Hover</b> any chart for exact values. The <span class="q">?</span> on each panel jumps to its entry here.</p>
+        <p><b>Keys:</b> <kbd>G</kbd> guide · <kbd>W</kbd> wire · <kbd>0</kbd>–<kbd>5</kbd> jump to a section · <kbd>Esc</kbd> close panels.</p>
+      </section>
 
-    <!-- 02 WIRE -->
-    <section class="section" id="wire" aria-labelledby="wire-h">
-      <div class="wrap">
-        <header class="section-head">
-          <p class="mono">02 — Wire</p>
-          <h2 id="wire-h">News</h2>
-          <p class="note">Headlines from publishers, regulators and Surf. When several outlets cover the same story it appears once. Each story is scored for institutional relevance, and the matched terms are shown under the headline.</p>
-        </header>
-        <h3 class="mono wire-label">Leading the last 24 hours</h3>
-        <div class="grid g3" id="wire-featured"></div>
-        <div class="wire-controls">
-          <div class="chipset" role="group" aria-label="Filter by category" id="wire-cats">
-            <button type="button" data-cat="all" aria-pressed="true">All</button>
-            <button type="button" data-cat="tokstable" aria-pressed="false">Tokenisation &amp; stablecoins</button>
-            <button type="button" data-cat="markets" aria-pressed="false">Markets</button>
-            <button type="button" data-cat="regulation" aria-pressed="false">Regulation</button>
-            <button type="button" data-cat="security" aria-pressed="false">Security &amp; risk</button>
-            <button type="button" data-cat="primary" aria-pressed="false">Regulators</button>
-          </div>
-          <div class="wire-right">
-            <label class="toggle mono"><input type="checkbox" id="wire-inst" checked> Institutional only</label>
-            <label class="visually-hidden" for="wire-q">Search headlines</label>
-            <input type="search" id="wire-q" class="search mono" placeholder="Search headlines" autocomplete="off">
-          </div>
-        </div>
-        <ol class="wire-list" id="wire-list" aria-live="polite"></ol>
-        <div class="wire-foot">
-          <button type="button" class="btn" id="wire-more" hidden>Show more</button>
-          <p class="mono foot" id="wire-meta"></p>
-        </div>
-      </div>
-    </section>
+      <section id="g-signals">
+        <h3>Signals</h3>
+        <p>The top strip boils the dashboard down to six readings. Each one is a single, transparent rule on public data. They describe conditions; they are not trade calls.</p>
+        <dl class="gl">
+          <dt id="g-sig-leverage">Leverage</dt>
+          <dd>Average annualised BTC perp funding across Deribit, Hyperliquid and OKX. Below 0%: shorts pay. 0–8%: neutral. 8–20%: elevated. Above 20%: overheated, which is when crowded longs tend to get flushed.</dd>
+          <dt id="g-sig-vol">Volatility</dt>
+          <dd>BTC DVOL (30-day implied vol). Below 35: compressed. 35–55: normal. 55–75: elevated. Above 75: stressed. Compressed vol often comes before large moves.</dd>
+          <dt id="g-sig-carry">Carry</dt>
+          <dd>Annualised premium of the front quarterly BTC future over spot: the cash-and-carry yield. Below 0%: backwardation, which is rare and stressed. 0–5%: thin. 5–12%: normal. Above 12%: rich, with strong demand for leveraged longs.</dd>
+          <dt id="g-sig-liq">Liquidity</dt>
+          <dd>30-day change in USD stablecoin supply. Below −2%: contracting. ±2%: flat. Above +2%: expanding, meaning new dollars are coming on-chain.</dd>
+          <dt id="g-sig-sent">Sentiment</dt>
+          <dd>Crypto Fear &amp; Greed index (0–100). Most useful at the extremes, below 25 or above 75.</dd>
+          <dt id="g-sig-macro">Macro link</dt>
+          <dd>30-day correlation of BTC daily returns with the Nasdaq 100. Above 0.5: BTC is trading as a risk asset. 0.2–0.5: loose. −0.2 to 0.2: decoupled. Below −0.2: inverse.</dd>
+        </dl>
+      </section>
 
-    <!-- 03 DERIVATIVES -->
-    <section class="section" id="derivatives" aria-labelledby="der-h">
-      <div class="wrap">
-        <header class="section-head">
-          <p class="mono">03 — Derivatives</p>
-          <h2 id="der-h">Positioning</h2>
-          <p class="note">Funding and basis are annualised. Positive means longs pay shorts, or futures trade above spot.</p>
-        </header>
+      <section id="g-metrics">
+        <h3>Metrics</h3>
+        <dl class="gl">
+          <dt id="g-spot">Spot</dt>
+          <dd>Last trade on Coinbase (USD). The 24h range bar shows where price sits between the 24-hour low and high. 7d and 30d changes and market caps come from CoinGecko.</dd>
+          <dt id="g-structure">Market structure</dt>
+          <dd><b>Dominance</b> is BTC's and ETH's share of total crypto market cap. Rising BTC dominance usually means money is moving from altcoins to bitcoin. <b>ETH/BTC</b> is the relative strength of ether. <b>Stablecoin share</b> is stablecoin supply as a share of total market cap; a high share means a lot of capital is sitting on the sidelines.</dd>
+          <dt id="g-funding">Perp funding</dt>
+          <dd>Perpetual futures have no expiry. A periodic funding payment keeps their price near spot. Positive funding means longs pay shorts. Venues pay at different intervals (Hyperliquid hourly, Deribit and OKX every 8h), so all rates are annualised to compare like for like. Hyperliquid and OKX have a small built-in baseline of about 10.95% a year, so read changes relative to that.</dd>
+          <dt id="g-basis">Basis curve</dt>
+          <dd>Each dot is a dated Deribit future: its annualised premium over spot, plotted against days to expiry. An upward-sloping curve (contango) is normal. A flat or inverted curve signals stress or heavy hedging.</dd>
+          <dt id="g-dvol">Implied volatility (DVOL)</dt>
+          <dd>Deribit's DVOL is the market's expected annualised volatility over the next 30 days, derived from option prices. It's the crypto equivalent of the VIX. The range bar places today within the last 30 days.</dd>
+          <dt id="g-oi">Open interest</dt>
+          <dd>The total value of open perpetual positions. Rising OI with rising price means new leverage is chasing the move; falling OI means positions are closing. Shown per venue.</dd>
+          <dt id="g-options">Options positioning</dt>
+          <dd>Put/call open-interest ratio on Deribit. Above 1 means more puts than calls are open (hedging or bearish); below 1 means calls dominate. Options OI is the notional value of all open options.</dd>
+          <dt id="g-history">Our funding history</dt>
+          <dd>Free APIs don't give cross-venue funding history, so the collector records it every hour. This chart exists only because the system stores its own time series.</dd>
+          <dt id="g-stables">Stablecoin supply</dt>
+          <dd>Total circulating USD-pegged stablecoins (DefiLlama). Growth is new on-chain dollar liquidity, and it often precedes inflows into crypto.</dd>
+          <dt id="g-tvl">DeFi TVL</dt>
+          <dd>Total value locked in DeFi protocols. It moves with prices, so compare it with ETH's move.</dd>
+          <dt id="g-macro">Cross-asset</dt>
+          <dd>Daily closes from Yahoo Finance: S&amp;P 500, Nasdaq 100, US Dollar Index, 10-year Treasury yield (change shown in basis points), gold and VIX.</dd>
+          <dt id="g-corr">BTC correlation</dt>
+          <dd>Pearson correlation of daily log returns, over 30 and 90 days. +1 means the two move together, −1 means they move opposite, 0 means unrelated.</dd>
+          <dt id="g-fng">Fear &amp; Greed</dt>
+          <dd>alternative.me's composite of volatility, momentum, social activity and dominance. Crude, but its extremes are informative.</dd>
+          <dt id="g-hashrate">Hashrate</dt>
+          <dd>Total computing power securing Bitcoin, in exahashes per second. It rises with miner investment and falls when mining becomes unprofitable.</dd>
+          <dt id="g-blockspace">Blockspace</dt>
+          <dd>Fee rates needed to confirm a transaction within a given time, in sat/vB. The retarget bar shows progress to the next difficulty adjustment (every 2,016 blocks, about 2 weeks) and the estimated change.</dd>
+          <dt id="g-wire">Wire</dt>
+          <dd>Headlines from publishers, regulators (SEC, CFTC, Fed, ECB, FCA) and Surf. When several outlets cover the same story, it appears once. Each story gets a transparent institutional score, and the terms it matched are shown under the headline.</dd>
+        </dl>
+      </section>
 
-        <div class="grid g2">
-          <div class="panel">
-            <h3 class="panel-h">Perp funding, annualised</h3>
-            <div class="table-wrap"><table class="data" id="funding-table"></table></div>
-          </div>
-          <div class="panel">
-            <h3 class="panel-h">Perp open interest</h3>
-            <div class="table-wrap"><table class="data" id="oi-table"></table></div>
-          </div>
-        </div>
-
-        <div class="grid g2">
-          <div class="panel">
-            <h3 class="panel-h">Futures basis curve <span class="mono sub">Deribit · annualised % vs days to expiry</span></h3>
-            <div class="chart tall" id="basis-chart"></div>
-            <div class="legend mono" id="basis-legend"></div>
-          </div>
-          <div class="panel">
-            <h3 class="panel-h">BTC funding, our history <span class="mono sub">hourly cross-venue average</span></h3>
-            <div class="chart tall" id="funding-hist"></div>
-            <p class="mono foot" id="funding-hist-note"></p>
-          </div>
-        </div>
-
-        <div class="grid g4 stats" id="vol-stats"></div>
-      </div>
-    </section>
-
-    <!-- 03 LIQUIDITY -->
-    <section class="section" id="liquidity" aria-labelledby="liq-h">
-      <div class="wrap">
-        <header class="section-head">
-          <p class="mono">04 — Liquidity</p>
-          <h2 id="liq-h">Stablecoins &amp; DeFi</h2>
-          <p class="note">USD stablecoin supply is a rough gauge of dry powder on-chain.</p>
-        </header>
-        <div class="grid g2">
-          <div class="panel">
-            <div id="stables-hero"></div>
-            <div class="chart" id="stables-chart"></div>
-          </div>
-          <div class="panel">
-            <h3 class="panel-h">Largest USD stablecoins</h3>
-            <div class="table-wrap"><table class="data" id="stables-table"></table></div>
-            <div class="spacer"></div>
-            <div id="tvl-hero"></div>
-            <div class="chart short" id="tvl-chart"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 04 MACRO -->
-    <section class="section" id="macro" aria-labelledby="mac-h">
-      <div class="wrap">
-        <header class="section-head">
-          <p class="mono">05 — Macro</p>
-          <h2 id="mac-h">Cross-asset</h2>
-          <p class="note">Daily closes, three months shown. Changes are vs the previous close and roughly one month ago.</p>
-        </header>
-        <div class="grid g3" id="macro-tiles"></div>
-        <div class="panel">
-          <h3 class="panel-h">BTC correlation <span class="mono sub">daily log returns</span></h3>
-          <div class="table-wrap"><table class="data corr" id="corr-table"></table></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 05 NETWORK -->
-    <section class="section" id="network" aria-labelledby="net-h">
-      <div class="wrap">
-        <header class="section-head">
-          <p class="mono">06 — Network &amp; sentiment</p>
-          <h2 id="net-h">Bitcoin network</h2>
-        </header>
-        <div class="grid g3" id="net-tiles"></div>
-      </div>
-    </section>
-
-    <!-- 06 SOURCES -->
-    <section class="section" id="sources" aria-labelledby="src-h">
-      <div class="wrap">
-        <header class="section-head">
-          <p class="mono">07 — Sources</p>
-          <h2 id="src-h">Pipeline health</h2>
-          <p class="note">A GitHub Actions job collects every source every 15 minutes. If a source fails, its last good data is kept and marked stale.</p>
-        </header>
-        <div class="table-wrap"><table class="data" id="src-table"></table></div>
-        <h3 class="panel-h" style="margin-top:40px">News feeds</h3>
-        <div class="table-wrap"><table class="data" id="news-src-table"></table></div>
+      <section id="g-pipeline">
+        <h3>Sources &amp; pipeline</h3>
+        <p>Every 15 minutes a GitHub Actions job runs two Python scripts. It commits the results as JSON to the repo and republishes this site. If a source fails, its last good data is kept and marked stale.</p>
+        <pre class="flow mono" aria-hidden="true">schedule ─► collect.py ─► latest.json · history.json · cyd.json
+         └► news.py    ─► news.json
+                         └► this page · desk display</pre>
+        <h4>Market data</h4>
+        <div class="table-wrap"><table class="data mini" id="src-table"></table></div>
+        <h4>News feeds</h4>
+        <div class="table-wrap"><table class="data mini" id="news-src-table"></table></div>
         <ul class="links mono">
           <li><a href="data/latest.json">latest.json ↗</a></li>
           <li><a href="data/history.json">history.json ↗</a></li>
-          <li><a href="data/cyd.json">cyd.json ↗</a></li>
           <li><a href="data/news.json">news.json ↗</a></li>
+          <li><a href="data/cyd.json">cyd.json ↗</a></li>
+          <li><a href="https://github.com/elianrosswag/kraft-markets">source ↗</a></li>
         </ul>
+        <p class="fine">Data: CoinGecko, Coinbase, Deribit, Hyperliquid, OKX, DefiLlama, mempool.space, alternative.me, Yahoo Finance, Surf and the publishers and regulators listed above. For information only, not investment advice.</p>
+      </section>
+    </div>
+  </aside>
+
+  <!-- ═════════════ WIRE (right drawer) ═════════════ -->
+  <aside class="drawer right" id="wire" aria-label="Wire" tabindex="-1">
+    <div class="dr-h">
+      <span class="mono">Wire <span id="wire-count" class="dim"></span></span>
+      <span class="dr-actions">
+        <button type="button" class="pin" data-pin="wire" title="Pin open">Pin</button>
+        <button type="button" class="x" data-close="wire" aria-label="Close wire">✕</button>
+      </span>
+    </div>
+    <div class="dr-tools">
+      <div class="chipset" role="group" aria-label="Filter by category" id="wire-cats">
+        <button type="button" data-cat="all" aria-pressed="true">All</button>
+        <button type="button" data-cat="tokstable" aria-pressed="false">Tokenisation</button>
+        <button type="button" data-cat="markets" aria-pressed="false">Markets</button>
+        <button type="button" data-cat="regulation" aria-pressed="false">Regulation</button>
+        <button type="button" data-cat="security" aria-pressed="false">Risk</button>
+        <button type="button" data-cat="primary" aria-pressed="false">Regulators</button>
+      </div>
+      <div class="wire-row2">
+        <label class="toggle mono"><input type="checkbox" id="wire-inst" checked> Institutional</label>
+        <label class="visually-hidden" for="wire-q">Search headlines</label>
+        <input type="search" id="wire-q" class="search mono" placeholder="Search" autocomplete="off">
+      </div>
+    </div>
+    <div class="dr-body">
+      <div id="wire-featured"></div>
+      <ol class="wire-list" id="wire-list" aria-live="polite"></ol>
+      <button type="button" class="btn" id="wire-more" hidden>Show more</button>
+      <p class="mono fine" id="wire-meta"></p>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- ═════════════ MAIN ═════════════ -->
+  <main id="main">
+
+    <section id="s-state" aria-labelledby="h-state">
+      <div class="sec-h"><b>00</b><h2 id="h-state">State of the market</h2><i></i><span class="mono dim" id="state-asof"></span></div>
+      <div class="term signals" id="signals"></div>
+    </section>
+
+    <section id="s-spot" aria-labelledby="h-spot">
+      <div class="sec-h"><b>01</b><h2 id="h-spot">Spot &amp; structure</h2><i></i></div>
+      <div class="term">
+        <div class="pn c8">
+          <div class="pn-h"><span class="code">F01</span><h3>Spot · live</h3><span class="meta">Coinbase</span><button class="q" data-guide="g-spot" aria-label="About spot">?</button></div>
+          <div class="table-wrap"><table class="spot" id="spot-table"></table></div>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F02</span><h3>Market structure</h3><button class="q" data-guide="g-structure" aria-label="About market structure">?</button></div>
+          <div id="structure"></div>
+        </div>
       </div>
     </section>
-  </main>
 
-  <footer class="site-footer">
-    <div class="wrap mono">
+    <section id="s-derivs" aria-labelledby="h-derivs">
+      <div class="sec-h"><b>02</b><h2 id="h-derivs">Derivatives</h2><i></i></div>
+      <div class="term">
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F03</span><h3>Funding heatmap</h3><span class="meta">annualised</span><button class="q" data-guide="g-funding" aria-label="About funding">?</button></div>
+          <div id="heatmap"></div>
+        </div>
+        <div class="pn c5">
+          <div class="pn-h"><span class="code">F04</span><h3>Basis term structure</h3><span class="meta">Deribit</span><button class="q" data-guide="g-basis" aria-label="About basis">?</button></div>
+          <div class="chart tall" id="basis-chart"></div>
+          <div class="legend mono" id="basis-legend"></div>
+        </div>
+        <div class="pn c3">
+          <div class="pn-h"><span class="code">F05</span><h3>Implied vol</h3><span class="meta">DVOL</span><button class="q" data-guide="g-dvol" aria-label="About DVOL">?</button></div>
+          <div id="vol"></div>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F06</span><h3>Open interest by venue</h3><span class="meta">perps</span><button class="q" data-guide="g-oi" aria-label="About open interest">?</button></div>
+          <div id="oi"></div>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F07</span><h3>BTC funding · our history</h3><span class="meta">hourly</span><button class="q" data-guide="g-history" aria-label="About funding history">?</button></div>
+          <div class="chart" id="funding-hist"></div>
+          <p class="fine mono" id="funding-hist-note"></p>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F08</span><h3>Options positioning</h3><span class="meta">Deribit</span><button class="q" data-guide="g-options" aria-label="About options">?</button></div>
+          <div id="options"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="s-liq" aria-labelledby="h-liq">
+      <div class="sec-h"><b>03</b><h2 id="h-liq">Liquidity</h2><i></i></div>
+      <div class="term">
+        <div class="pn c8">
+          <div class="pn-h"><span class="code">F09</span><h3>USD stablecoin supply</h3><span class="meta">DefiLlama · 90d</span><button class="q" data-guide="g-stables" aria-label="About stablecoins">?</button></div>
+          <div id="stables-head"></div>
+          <div class="chart" id="stables-chart"></div>
+          <div id="stables-mix"></div>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F10</span><h3>DeFi TVL</h3><span class="meta">90d</span><button class="q" data-guide="g-tvl" aria-label="About TVL">?</button></div>
+          <div id="tvl-head"></div>
+          <div class="chart" id="tvl-chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="s-macro" aria-labelledby="h-macro">
+      <div class="sec-h"><b>04</b><h2 id="h-macro">Macro</h2><i></i></div>
+      <div class="term">
+        <div class="pn c8">
+          <div class="pn-h"><span class="code">F11</span><h3>Cross-asset</h3><span class="meta">daily · 3m</span><button class="q" data-guide="g-macro" aria-label="About macro">?</button></div>
+          <div class="mgrid" id="macro"></div>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F12</span><h3>BTC correlation</h3><span class="meta">daily returns</span><button class="q" data-guide="g-corr" aria-label="About correlation">?</button></div>
+          <div id="corr"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="s-net" aria-labelledby="h-net">
+      <div class="sec-h"><b>05</b><h2 id="h-net">Network &amp; sentiment</h2><i></i></div>
+      <div class="term">
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F13</span><h3>Fear &amp; Greed</h3><button class="q" data-guide="g-fng" aria-label="About Fear and Greed">?</button></div>
+          <div id="fng"></div>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F14</span><h3>Hashrate</h3><span class="meta">1m</span><button class="q" data-guide="g-hashrate" aria-label="About hashrate">?</button></div>
+          <div id="hash-head"></div>
+          <div class="chart" id="hash-chart"></div>
+        </div>
+        <div class="pn c4">
+          <div class="pn-h"><span class="code">F15</span><h3>Blockspace</h3><span class="meta">mempool.space</span><button class="q" data-guide="g-blockspace" aria-label="About blockspace">?</button></div>
+          <div id="blockspace"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot mono">
       <span>KRAFT Markets · for information only, not investment advice</span>
-      <span>Data: <a href="https://www.coingecko.com">CoinGecko</a>, Coinbase, Surf, Deribit, Hyperliquid, OKX, DefiLlama, mempool.space, alternative.me, Yahoo Finance</span>
-    </div>
-  </footer>
+      <span>Prices by <a href="https://www.coingecko.com">CoinGecko</a> &amp; Coinbase · full source list in the <button type="button" class="linkish" data-guide="g-pipeline">Guide</button></span>
+    </footer>
+  </main>
 
   <div class="tip mono" id="tip" role="tooltip" hidden></div>
   <script src="assets/dashboard.js" defer></script>
