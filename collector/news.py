@@ -457,7 +457,7 @@ def main():
     # Top three institutional headlines for the desk display
     cyd = read_json("cyd.json", None)
     if cyd is not None:
-        top = [s for s in stories if s["inst"] and not s.get("reach")][:3]
+        top = [s for s in stories if s["inst"] and not s.get("reach") and not s["pr"]][:3]  # no press releases on the desk
         cyd["news"] = [{"t": s["title"][:90], "s": s["lead"][:16], "a": now - s["ts"]} for s in top]
         write_json("cyd.json", cyd)
 
