@@ -220,6 +220,16 @@ def parse_feed(xml_text):
     return out
 
 
+def ascii_text(s):
+    """The desk display's built-in fonts are ASCII only: map curly quotes, dashes and accents."""
+    import unicodedata
+    for k, v in {"\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-",
+                 "\u2026": "...", "\u20ac": "EUR ", "\u00a3": "GBP ", "\u00a0": " "}.items():
+        s = s.replace(k, v)
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def canonical(url):
     """Strip tracking params so the same article from two routes matches."""
     p = urllib.parse.urlsplit(url)
@@ -458,7 +468,7 @@ def main():
     cyd = read_json("cyd.json", None)
     if cyd is not None:
         top = [s for s in stories if s["inst"] and not s.get("reach") and not s["pr"]][:3]  # no press releases on the desk
-        cyd["news"] = [{"t": s["title"][:90], "s": s["lead"][:16], "a": now - s["ts"]} for s in top]
+        cyd["news"] = [{"t": ascii_text(s["title"])[:110], "s": ascii_text(s["lead"])[:16], "ts": s["ts"]} for s in top]
         write_json("cyd.json", cyd)
 
     ok = sum(1 for h in health.values() if h.get("ok"))

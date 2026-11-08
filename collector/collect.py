@@ -531,6 +531,13 @@ def cyd_payload(now, blocks, derived, sources):
         "spx": r((mac.get("SPX") or {}).get("price"), 1), "spx1d": (mac.get("SPX") or {}).get("chg1d"),
         "dxy": r((mac.get("DXY") or {}).get("price"), 2),
         "us10y": r((mac.get("US10Y") or {}).get("price"), 3),
+        "stbl30": st.get("chg30d"),
+        "mcap24": g.get("mcap_chg24"),
+        "corr": ((blocks.get("macro") or {}).get("corr") or {}).get("NDX", {}).get("30d"),
+        "dxy1d": (mac.get("DXY") or {}).get("chg1d"),
+        "us10ybp": r(((mac.get("US10Y") or {}).get("abs1d") or 0) * 100, 0) if (mac.get("US10Y") or {}).get("abs1d") is not None else None,
+        "gold": r((mac.get("GOLD") or {}).get("price"), 0), "gold1d": (mac.get("GOLD") or {}).get("chg1d"),
+        "ndx": r((mac.get("NDX") or {}).get("price"), 0), "ndx1d": (mac.get("NDX") or {}).get("chg1d"),
         "ok": sum(1 for s in sources.values() if s["ok"]), "n": len(sources),
         "spark": [r(p, 0) for p in thin(btc_spark, 48)],
     }

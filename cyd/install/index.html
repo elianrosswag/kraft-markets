@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KRAFT Desk Display</title>
+  <meta name="description" content="Install the KRAFT market display firmware on an ESP32 Cheap Yellow Display, from the browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@300;400;500&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/esp-web-tools@10.0.1/dist/web/install-button.js?module"></script>
+  <style>
+    :root { --g: #39FF14; --s100: #dfe2e5; --s300: #a7acb2; --s500: #80858b; --s700: #3b3e42; --s800: #222427; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #000; color: var(--s300); font: 400 15px/1.6 "Inter Tight", system-ui, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
+    .mono { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--s500); }
+    a { color: var(--g); }
+    .wm { font-weight: 600; letter-spacing: .32em; color: var(--s100); text-decoration: none; }
+    .wm span { color: var(--g); }
+    h1 { font-weight: 300; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; letter-spacing: -.02em; color: var(--s100); margin: 34px 0 14px; }
+    .lede { max-width: 56ch; }
+    .box { border: 1px solid var(--s800); padding: 22px; margin: 28px 0; position: relative; }
+    .box::before { content: ""; position: absolute; left: -1px; top: -1px; width: 10px; height: 10px; border-top: 1px solid var(--s500); border-left: 1px solid var(--s500); }
+    ol { padding-left: 20px; margin: 0; }
+    li { margin: 10px 0; }
+    li b, p b { color: var(--s100); font-weight: 500; }
+    esp-web-install-button button[slot="activate"] {
+      font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+      background: transparent; color: var(--g); border: 1px solid var(--g); padding: 14px 22px; cursor: pointer;
+    }
+    esp-web-install-button button[slot="activate"]:hover { background: var(--g); color: #000; }
+    .warn { color: var(--s100); border-left: 2px solid var(--g); padding-left: 12px; }
+    kbd { font-family: "IBM Plex Mono", monospace; font-size: 11px; border: 1px solid var(--s700); padding: 0 5px; color: var(--s100); }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    td { padding: 8px 0; border-bottom: 1px solid var(--s800); vertical-align: top; }
+    td:first-child { color: var(--s100); padding-right: 16px; white-space: nowrap; font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="wm" href="/">KRAFT<span>.</span></a> <span class="mono">&nbsp;/ Desk display</span>
+    <h1>Install the desk display</h1>
+    <p class="lede">Flash the KRAFT market display onto a Cheap Yellow Display (ESP32-2432S028, 2-USB version) straight from this page. No software to install. It takes about a minute.</p>
+
+    <div class="box">
+      <p class="mono">Step 1 · Flash</p>
+      <ol>
+        <li>Open this page in <b>Chrome</b> or <b>Edge</b> on your Mac (Safari can't talk to USB devices).</li>
+        <li>Plug the display in with a <b>data</b> USB-C cable. Some cables only charge.</li>
+        <li>Click the button, choose the port that appears (usually <b>USB Serial</b> or <b>wchusbserial…</b>) and follow the prompts.</li>
+      </ol>
+      <p style="margin:20px 0 6px">
+        <esp-web-install-button manifest="manifest.json">
+          <button slot="activate">Install / update firmware</button>
+          <span slot="unsupported" class="warn">This browser can't flash devices. Open the page in Chrome or Edge.</span>
+          <span slot="not-allowed" class="warn">Flashing needs a secure page (https).</span>
+        </esp-web-install-button>
+      </p>
+      <p class="mono" style="margin-top:14px">First install: say yes to "erase". Updates: say no, which keeps your saved Wi-Fi.</p>
+    </div>
+
+    <div class="box">
+      <p class="mono">Step 2 · First boot</p>
+      <ol>
+        <li>The screen asks <b>"Is this screen black?"</b> If you see a white background, tap the screen. It remembers the answer.</li>
+        <li>A QR code appears. Scan it with your phone (or join the Wi-Fi network <b>KRAFT-CYD</b>). A setup page opens; if it doesn't, go to <b>192.168.4.1</b>.</li>
+        <li>Add your home network. You can add your work network at the same time: for networks that sign in with a username, fill in the <b>Username</b> field too.</li>
+        <li>Tap <b>Done</b>. From then on the display joins whichever saved network is in range on its own, so there's no setup when you arrive at the office.</li>
+      </ol>
+    </div>
+
+    <div class="box">
+      <p class="mono">Using it</p>
+      <table>
+        <tr><td>Tap</td><td>Next page: Spot → State of the market → Wire → Macro. Pages also rotate every 20 seconds.</td></tr>
+        <tr><td>Hold 4 s</td><td>Opens the setup hotspot to add or forget networks, or flip the screen colours.</td></tr>
+        <tr><td>Square, top right</td><td>Solid green: online. Outline: offline and retrying every 30 seconds.</td></tr>
+        <tr><td>Night</td><td>The backlight dims between 22:00 and 07:00 UK time.</td></tr>
+      </table>
+    </div>
+
+    <div class="box">
+      <p class="mono">If something goes wrong</p>
+      <p><b>No port appears.</b> Try another cable or USB port. The board uses a CH340 USB chip; recent macOS versions include its driver.</p>
+      <p><b>"Failed to connect".</b> Hold the <kbd>BOOT</kbd> button on the back, click Install again, and release it once flashing starts.</p>
+      <p><b>The screen flickers when the cable moves.</b> That's the power connection, not the software: the USB socket or cable is briefly dropping power. Use a short, good-quality USB-C cable and keep it still (your printed case will help), or power it from a wall adapter instead of a laptop.</p>
+      <p><b>Work Wi-Fi won't connect.</b> Some company networks only allow registered devices or use certificates. The guest network is often the easiest option, and it's worth checking with IT before connecting personal hardware.</p>
+    </div>
+
+    <p class="mono">Firmware source: <a href="https://github.com/elianrosswag/kraft-markets/tree/main/cyd">github.com/elianrosswag/kraft-markets/cyd</a></p>
+  </div>
+</body>
+</html>
