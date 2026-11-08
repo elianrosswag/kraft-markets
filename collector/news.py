@@ -32,6 +32,7 @@ DATA_DIR = os.path.join(ROOT, "data")
 UA = "Mozilla/5.0 (compatible; KRAFT-Markets/1.0; +https://markets.elian.ink)"
 KEEP_DAYS = 7
 MAX_ITEMS = 400
+STALE_AFTER_S = 4 * 86400      # a feed whose newest item is older than this is treated as broken
 SURF_EVERY_S = 55 * 60          # 1 credit per call; 30 free credits/day per IP without a key
 
 # kind: "crypto" = everything is relevant
@@ -50,12 +51,18 @@ FEEDS = [
     {"key": "coindesk", "name": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/", "home": "https://www.coindesk.com/", "kind": "crypto", "priority": 3},
     {"key": "dlnews", "name": "DL News", "url": "https://www.dlnews.com/arc/outboundfeeds/rss/", "home": "https://www.dlnews.com/", "kind": "crypto", "priority": 3},
     {"key": "unchained", "name": "Unchained", "url": "https://unchainedcrypto.com/feed/", "home": "https://unchainedcrypto.com/", "kind": "crypto", "priority": 4},
-    {"key": "blockworks", "name": "Blockworks", "url": "https://blockworks.co/feed", "home": "https://blockworks.co/", "kind": "crypto", "priority": 4},
+    {"key": "blockworks", "name": "Blockworks", "url": "https://blockworks.com/feed", "home": "https://blockworks.com/", "kind": "crypto", "priority": 4},
     {"key": "cointelegraph", "name": "Cointelegraph", "url": "https://cointelegraph.com/rss", "home": "https://cointelegraph.com/", "kind": "crypto", "priority": 5},
     {"key": "decrypt", "name": "Decrypt", "url": "https://decrypt.co/feed", "home": "https://decrypt.co/", "kind": "crypto", "priority": 5},
     {"key": "finextra", "name": "Finextra", "url": "https://www.finextra.com/rss/headlines.aspx", "home": "https://www.finextra.com/", "kind": "filter", "priority": 4},
     {"key": "prnewswire", "name": "PR Newswire", "url": "https://www.prnewswire.com/rss/financial-services-latest-news/cryptocurrency-list.rss", "home": "https://www.prnewswire.com/rss/", "kind": "crypto", "priority": 6, "press_release": True},
 ]
+
+# Surf brings reach: it also carries smaller, often machine-translated aggregators.
+# Stories only from outlets outside this list are kept, but scored lower and never featured
+# unless another outlet corroborates them.
+TRUSTED_OUTLETS = {"coindesk", "theblock", "decrypt", "dlnews", "cointelegraph", "blockworks", "unchained",
+                   "ledgerinsights", "bloomberg", "reuters", "financialtimes", "wsj", "tradingview"}
 
 # ───────────────────────────── vocabulary ─────────────────────────────
 # Each rule: (regex, weight). Tweak freely; the site shows which ones matched.
@@ -224,18 +231,25 @@ def canonical(url):
 
 def collect_feed(cfg, prev_health):
     url = (prev_health or {}).get("discovered") or cfg["url"]
-    discovered = None
+    discovered, items = None, []
     try:
         body, _ = fetch(url)
         items = parse_feed(body)
+        newest = max([i["ts"] for i in items if i["ts"]] or [0])
+        if time.time() - newest > STALE_AFTER_S:
+            raise RuntimeError(f"stale: newest item {int((time.time() - newest) / 86400)} days old")
     except Exception as first_err:
-        try:  # the URL moved or broke: look for the site's current feed
+        try:  # the URL moved, broke or went stale: look for the site's current feed
             discovered = discover(cfg["home"])
+            if discovered.rstrip("/") == url.rstrip("/"):
+                raise RuntimeError("site still advertises the same feed")
             body, _ = fetch(discovered)
             items = parse_feed(body)
         except Exception as e:
+            if str(first_err).startswith("stale") and items:
+                return items, None, str(first_err)  # keep the (old) items, report the warning
             raise RuntimeError(f"{first_err}; discovery: {e}")
-    return items, discovered
+    return items, discovered, None
 
 
 def collect_surf(prev):
@@ -339,7 +353,7 @@ def main():
     for cfg in FEEDS:
         t0 = time.time()
         try:
-            items, discovered = collect_feed(cfg, prev_health.get(cfg["key"]))
+            items, discovered, warning = collect_feed(cfg, prev_health.get(cfg["key"]))
             kept = 0
             for it in items:
                 if cfg["kind"] == "filter" and not DIGITAL_ASSET.search(it["title"] + " " + " ".join(it["cats"])):
@@ -350,8 +364,8 @@ def main():
                 kept += 1
             health[cfg["key"]] = {"name": cfg["name"], "ok": True, "at": iso_now, "items": len(items), "kept": kept,
                                   "discovered": discovered or (prev_health.get(cfg["key"]) or {}).get("discovered"),
-                                  "error": None, "ms": int((time.time() - t0) * 1000)}
-            print(f"  ok   {cfg['key']:15s} {len(items):3d} items, {kept:3d} kept" + (f"  (found new feed: {discovered})" if discovered else ""))
+                                  "error": None, "warning": warning, "ms": int((time.time() - t0) * 1000)}
+            print(f"  ok   {cfg['key']:15s} {len(items):3d} items, {kept:3d} kept" + (f"  (found new feed: {discovered})" if discovered else "") + (f"  [{warning}]" if warning else ""))
         except Exception as e:
             p = prev_health.get(cfg["key"]) or {}
             health[cfg["key"]] = {"name": cfg["name"], "ok": False, "at": p.get("at"), "items": 0, "kept": 0,
@@ -376,7 +390,9 @@ def main():
                           "ms": int((time.time() - t0) * 1000)}
         print(f"  FAIL surf            {e}", file=sys.stderr)
     for it in surf_state.get("items") or []:
-        raw.append(dict(it, source=it.get("via") or "Surf", key="surf", priority=7, primary=False, pr=False))
+        via = it.get("via") or "Surf"
+        reach = via.lower().replace(" ", "") not in TRUSTED_OUTLETS
+        raw.append(dict(it, source=via, key="surf", priority=8 if reach else 7, primary=False, pr=False, reach=reach))
 
     # Merge with what we already had, so stories persist after they drop out of a feed
     stories = prev.get("items") or []
@@ -399,7 +415,7 @@ def main():
                     story = s
                     break
         if story is None:
-            story = {"title": it["title"], "url": it["url"], "ts": ts, "lead": it["source"], "lead_priority": it["priority"],
+            story = {"title": it["title"], "url": it["url"], "ts": ts, "lead": it["source"], "lead_priority": it["priority"], "reach": True,
                      "sources": [], "urls": [], "tk": sorted(tokens(it["title"])), "primary": False, "pr": it["pr"], "cats_src": []}
             stories.append(story)
         if it["source"] not in story["sources"]:
@@ -409,6 +425,7 @@ def main():
             story.update(title=it["title"], url=it["url"], lead=it["source"], lead_priority=it["priority"])
         story["ts"] = min(story["ts"], ts)
         story["primary"] = story["primary"] or it["primary"]
+        story["reach"] = story.get("reach", True) and it.get("reach", False)  # True only if every source is reach-tier
         story["pr"] = story["pr"] and it["pr"]
         story["cats_src"] = sorted(set(story["cats_src"]) | set(it["cats"]))[:8]
         by_url[cu] = story
@@ -422,12 +439,13 @@ def main():
         score += 2 if s["primary"] else 0
         score += min(coverage - 1, 3)
         score -= 1 if s["pr"] else 0
+        score -= 1 if s.get("reach") else 0  # uncorroborated reach-tier aggregator
         s.update(cat=cat, tags=tags, entities=ents, score=score, why=why, inst=score >= 2)
 
     stories.sort(key=lambda s: s["ts"], reverse=True)
     stories = stories[:MAX_ITEMS]
 
-    day = [s for s in stories if s["ts"] >= now - 86400]
+    day = [s for s in stories if s["ts"] >= now - 86400 and not s.get("reach")]
     featured = sorted(day, key=lambda s: (s["score"] + 2 * len(s["sources"]), s["ts"]), reverse=True)[:3]
     feat_ids = {id(s) for s in featured}
     for s in stories:
@@ -439,7 +457,7 @@ def main():
     # Top three institutional headlines for the desk display
     cyd = read_json("cyd.json", None)
     if cyd is not None:
-        top = [s for s in stories if s["inst"]][:3]
+        top = [s for s in stories if s["inst"] and not s.get("reach")][:3]
         cyd["news"] = [{"t": s["title"][:90], "s": s["lead"][:16], "a": now - s["ts"]} for s in top]
         write_json("cyd.json", cyd)
 

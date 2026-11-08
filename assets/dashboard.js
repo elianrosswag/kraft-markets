@@ -458,7 +458,7 @@
     $("news-src-table").innerHTML = "<thead><tr><th>Feed</th><th>Status</th><th>Last success</th><th>Items</th><th style='text-align:left'>Detail</th></tr></thead><tbody>" +
       Object.keys(f).map(function (k) {
         var x = f[k];
-        var detail = x.error || (x.discovered ? "Feed moved, now using " + x.discovered : "") || x.note || "";
+        var detail = x.error || x.warning || (x.discovered ? "Feed moved, now using " + x.discovered : "") || x.note || "";
         return "<tr><td>" + esc(x.name || k) + "</td><td>" + (x.ok ? '<span class="up">● OK</span>' : '<span class="down">○ Stale</span>') +
           "</td><td>" + ago(x.at) + "</td><td>" + (isNum(x.kept) ? x.kept + (x.items !== x.kept ? " / " + x.items : "") : NA) + '</td><td class="err">' + esc(detail) + "</td></tr>";
       }).join("") + "</tbody>";
