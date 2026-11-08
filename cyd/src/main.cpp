@@ -18,12 +18,16 @@
  *   Tap ............................ next page
  *   Hold 4 s ....................... open the setup hotspot (add / forget networks)
  *   Hold BOOT while powering on .... open the setup hotspot
+ *
+ * Updates: every 6 h (and at boot) it reads cyd/install/version.json from the site. If a newer
+ * build exists it downloads firmware.bin and restarts into it. A failed download changes nothing.
  */
 
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <HTTPUpdate.h>
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <Preferences.h>
@@ -46,6 +50,12 @@ static const uint32_t LIVE_EVERY_MS = 30UL * 1000;
 static const uint32_t PAGE_EVERY_MS = 20UL * 1000;
 static const int MAX_NETS = 5;
 static const int PAGES = 4;
+static const char* VERSION_URL = "https://markets.elian.ink/cyd/install/version.json";
+static const char* FIRMWARE_URL = "https://markets.elian.ink/cyd/install/firmware.bin";
+static const uint32_t UPDATE_EVERY_MS = 6UL * 3600 * 1000;
+#ifndef FW_BUILD
+#define FW_BUILD 0      // set by the build workflow (UTC timestamp of the build)
+#endif
 
 // CYD pins (fixed by the board)
 #define PIN_BOOT 0
@@ -89,7 +99,7 @@ uint32_t snapFetchedAt = 0;
 int page = 0;
 bool portalMode = false;
 bool invertColours = false;
-uint32_t lastData = 0, lastLive = 0, lastPage = 0, lastDraw = 0, lastWifiTry = 0;
+uint32_t lastData = 0, lastLive = 0, lastPage = 0, lastDraw = 0, lastWifiTry = 0, lastUpdateCheck = 0;
 
 // ───────────────────────── drawing helpers (band-aware) ─────────────────────────
 // Every primitive takes screen coordinates; we shift by the current band's offset.
@@ -466,6 +476,7 @@ String portalPage(const String& note = "") {
   if (!n) h += F("<li><small>None yet</small></li>");
   for (int i = 0; i < n; i++) h += "<li>" + esc(nets[i].ssid) + (nets[i].user.length() ? " <small>(work login)</small>" : "") + "<a href='/forget?i=" + String(i) + "'>forget</a></li>";
   h += F("</ul><h2>Screen</h2><p><small>If the screen background looks white instead of black:</small></p><a class=b href=/invert>Flip screen colours</a>"
+         "<h2>Firmware</h2><p><small>Build " + String((long)FW_BUILD) + ". Updates install themselves over Wi-Fi.</small></p>"
          "<h2>Finish</h2><a class=b href=/done>Done, restart display</a><p><small>Saved networks stay on the device. It joins whichever one is in range, so you only set each network up once.</small></p>");
   return h;
 }
@@ -576,6 +587,25 @@ void fetchLive() {
   }
 }
 
+// ───────────────────────── over-the-air updates ─────────────────────────
+void checkForUpdate() {
+  String body;
+  if (!httpGet(VERSION_URL, body)) return;
+  JsonDocument doc;
+  if (deserializeJson(doc, body)) return;
+  long latest = doc["build"] | 0L;
+  if (latest <= (long)FW_BUILD) return;
+  message("Updating", "New firmware " + String((const char*)(doc["version"] | "")), "Don't unplug. Takes about a minute.");
+  esp_task_wdt_delete(NULL);              // downloading can take longer than the watchdog allows
+  WiFiClientSecure client;
+  client.setInsecure();
+  httpUpdate.rebootOnUpdate(true);
+  t_httpUpdate_return r = httpUpdate.update(client, FIRMWARE_URL);
+  esp_task_wdt_add(NULL);
+  if (r != HTTP_UPDATE_OK) message("Update failed", "Keeping the current version", httpUpdate.getLastErrorString());
+  delay(1500);
+}
+
 // ───────────────────────── backlight ─────────────────────────
 void backlight(uint8_t level) { ledcWrite(0, level); }
 void autoDim() {
@@ -646,9 +676,10 @@ void setup() {
 
   configTzTime(TZ_LONDON, "pool.ntp.org", "time.google.com");
   message("Online", WiFi.SSID(), "Fetching market data");
+  checkForUpdate();
   fetchSnapshot();
   fetchLive();
-  lastData = lastLive = lastPage = millis();
+  lastData = lastLive = lastPage = lastUpdateCheck = millis();
   render();
 }
 
@@ -677,6 +708,7 @@ void loop() {
   if (WiFi.status() == WL_CONNECTED) {
     if (now - lastData > DATA_EVERY_MS || !haveSnap && now - lastData > 30000) { lastData = now; fetchSnapshot(); }
     if (now - lastLive > LIVE_EVERY_MS) { lastLive = now; fetchLive(); if (page == 0) render(); }
+    if (now - lastUpdateCheck > UPDATE_EVERY_MS) { lastUpdateCheck = now; checkForUpdate(); render(); }
   }
   if (now - lastPage > PAGE_EVERY_MS) { lastPage = now; page = (page + 1) % PAGES; render(); }
   if (now - lastDraw > 15000) { lastDraw = now; autoDim(); render(); }  // keeps the clock current

@@ -31,25 +31,31 @@ jobs:
       - name: Install PlatformIO
         run: pip install -q platformio==6.1.16 esptool==4.8.1
 
+      - name: Stamp the build
+        run: |
+          echo "BUILD=$(date -u +%s)" >> $GITHUB_ENV
+          echo "VERSION=$(date -u +%Y.%m.%d-%H%M)" >> $GITHUB_ENV
+
       - name: Compile
         working-directory: cyd
         run: pio run
+        env:
+          PLATFORMIO_BUILD_FLAGS: -DFW_BUILD=${{ env.BUILD }}
 
       - name: Package for the web installer
         run: |
           B=cyd/.pio/build/cyd2usb
           APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 -name boot_app0.bin | head -1)
           cp $B/bootloader.bin $B/partitions.bin $B/firmware.bin "$APP0" cyd/install/
-          VERSION=$(date -u +%Y.%m.%d-%H%M)
           sed "s/__VERSION__/$VERSION/" cyd/install/manifest.template.json > cyd/install/manifest.json
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "{\"build\": $BUILD, \"version\": \"$VERSION\"}" > cyd/install/version.json   # devices poll this
           ls -la cyd/install
 
       - name: Commit firmware
         run: |
           git config user.name  "kraft-builder"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cyd/install/*.bin cyd/install/manifest.json
+          git add cyd/install/*.bin cyd/install/manifest.json cyd/install/version.json
           git commit -m "cyd: firmware $VERSION" --quiet || exit 0
           git pull --rebase --quiet origin main
           git push --quiet origin HEAD:main
