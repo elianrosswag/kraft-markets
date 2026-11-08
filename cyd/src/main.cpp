@@ -476,8 +476,8 @@ String portalPage(const String& note = "") {
   if (!n) h += F("<li><small>None yet</small></li>");
   for (int i = 0; i < n; i++) h += "<li>" + esc(nets[i].ssid) + (nets[i].user.length() ? " <small>(work login)</small>" : "") + "<a href='/forget?i=" + String(i) + "'>forget</a></li>";
   h += F("</ul><h2>Screen</h2><p><small>If the screen background looks white instead of black:</small></p><a class=b href=/invert>Flip screen colours</a>"
-         "<h2>Firmware</h2><p><small>Build " + String((long)FW_BUILD) + ". Updates install themselves over Wi-Fi.</small></p>"
          "<h2>Finish</h2><a class=b href=/done>Done, restart display</a><p><small>Saved networks stay on the device. It joins whichever one is in range, so you only set each network up once.</small></p>");
+  h += "<h2>Firmware</h2><p><small>Build " + String((long)FW_BUILD) + ". Updates install themselves over Wi-Fi.</small></p>";
   return h;
 }
 
